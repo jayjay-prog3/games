@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>YouTube unpatcher</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body {
+      margin:0;
+      padding:2rem;
+      font-family: Arial, sans-serif;
+      background:#0f1724;
+      color:#e6eef8;
+    }
+    h1 {font-size:1.8rem;margin-bottom:1rem;text-align:center;}
+    .box {background:#182238; padding:1rem; border-radius:12px; max-width:900px; margin:auto;}
+    input {flex:1; padding:0.6rem; border-radius:8px; border:1px solid #333; background:#0b1220; color:#e6eef8;}
+    button {padding:0.6rem 1rem; border:0; border-radius:8px; background:#4f46e5; color:white; cursor:pointer; transition:.2s;}
+    button:hover{background:#4338ca;}
+    button.ghost {background:transparent; border:1px solid #333;}
+    .controls {display:flex; gap:0.5rem; margin-bottom:1rem;}
+    iframe {width:100%; height:480px; border:0; border-radius:12px; display:block; margin-top:1rem;}
+    .preview {margin-top:1rem; display:flex; gap:1rem; align-items:center; background:#0b1220; padding:0.8rem; border-radius:10px;}
+    .preview img{width:160px; border-radius:8px;}
+    .preview .meta{flex:1;}
+    .preview h2{margin:0; font-size:1.1rem;}
+    .preview p{margin:0.2rem 0 0; font-size:0.9rem; color:#9ca3af;}
+    .history{margin-top:1.5rem;}
+    .history h3{margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;}
+    .history-list{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:0.8rem;}
+    .history-item{background:#0b1220; border-radius:8px; overflow:hidden; cursor:pointer; transition:.2s; display:flex; flex-direction:column;}
+    .history-item:hover{background:#1a2236;}
+    .history-item img{width:100%; height:90px; object-fit:cover;}
+    .history-item span{padding:0.4rem; font-size:0.8rem; color:#e6eef8; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>YouTube UnPatched</h1>
+    <div class="controls">
+      <input id="link" type="text" placeholder="Paste YouTube link (normal or Shorts)" />
+      <button id="load">Load</button>
+      <button id="clear" class="ghost">Clear</button>
+    </div>
+
+    <div id="preview"></div>
+    <div id="player"></div>
+
+    <div class="history">
+      <h3>
+        History
+        <button id="clearHistory" class="ghost" style="font-size:0.8rem;">Clear History</button>
+      </h3>
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById("link");
+    const loadBtn = document.getElementById("load");
+    const clearBtn = document.getElementById("clear");
+    const preview = document.getElementById("preview");
+    const player = document.getElementById("player");
+    const historyList = document.getElementById("historyList");
+    const clearHistoryBtn = document.getElementById("clearHistory");
+
+    function extractVideoId(url) {
+      const reg = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = url.match(reg);
+      return match ? match[1] : null;
+    }
+
+    async function loadVideo(url) {
+      const id = extractVideoId(url);
+      if (!id) { alert("Not a valid YouTube link!"); return; }
+
+      let title = "Unknown title", author = "Unknown";
+      try {
+        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`);
+        const data = await res.json();
+        title = data.title;
+        author = data.author_name;
+      } catch(e) {}
+
+      preview.innerHTML = `
+        <div class="preview">
+          <img src="https://img.youtube.com/vi/${id}/hqdefault.jpg" alt="thumbnail">
+          <div class="meta">
+            <h2>${title}</h2>
+            <p>${author}</p>
+          </div>
+        </div>`;
+
+      player.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}" allowfullscreen></iframe>`;
+      addToHistory(url, id, title);
+    }
+
+    function addToHistory(url, id, title){
+      let hist = JSON.parse(localStorage.getItem("ytHistory") || "[]");
+      hist = hist.filter(item => item.url !== url);
+      hist.unshift({url, id, title});
+      if(hist.length > 12) hist.pop();
+      localStorage.setItem("ytHistory", JSON.stringify(hist));
+      renderHistory();
+    }
+
+    function renderHistory(){
+      let hist = JSON.parse(localStorage.getItem("ytHistory") || "[]");
+      historyList.innerHTML = "";
+      hist.forEach(item=>{
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.innerHTML = `
+          <img src="https://img.youtube.com/vi/${item.id}/mqdefault.jpg" alt="thumb">
+          <span>${item.title}</span>`;
+        div.onclick = ()=> loadVideo(item.url);
+        historyList.appendChild(div);
+      });
+    }
+
+    loadBtn.onclick = () => loadVideo(input.value.trim());
+    clearBtn.onclick = () => {
+      input.value="";
+      preview.innerHTML="";
+      player.innerHTML="";
+    };
+
+    clearHistoryBtn.onclick = () => {
+      if(confirm("Are you sure you want to clear all history?")) {
+        localStorage.removeItem("ytHistory");
+        renderHistory();
+      }
+    };
+
+    renderHistory();
+  </script>
+</body>
+</html>
