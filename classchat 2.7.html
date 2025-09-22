@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Classroom Chat 2.0</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-mart@5.6.0/css/emoji-mart.css" />
+<style>
+  :root{--bg:#0f1720;--panel:#0b1220;--muted:#9aa4b2;--accent:#5865f2;--chat-bg:#0b1014;}
+  html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;}
+  body{background:linear-gradient(180deg,#061017 0%, #071423 100%);color:#e6eef6;display:flex;align-items:stretch;}
+  .sidebar{width:260px;background:linear-gradient(180deg,var(--panel),#06121b);padding:18px;box-sizing:border-box;border-right:1px solid rgba(255,255,255,0.03)}
+  .main{flex:1;display:flex;flex-direction:column;height:100vh;}
+  .server-title{font-weight:700;font-size:20px;margin-bottom:10px}
+  .profile{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .avatar{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#07101a;overflow:hidden;box-shadow:0 6px 14px rgba(0,0,0,.6);background:#5865f2}
+  .user-info{flex:1}.username{font-weight:700}.small{color:var(--muted);font-size:13px;margin-top:4px}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;color:var(--muted);cursor:pointer;font-size:12px}
+  .btn.accent{background:linear-gradient(90deg,var(--accent),#8b7bf6);border:none;color:white;font-size:14px;padding:8px 12px}
+  .chat-header{padding:14px;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:space-between}
+  .typing-indicator{font-size:12px;color:var(--muted);margin-left:10px;height:16px;}
+  .chat-area{flex:1;overflow:auto;padding:20px;background:linear-gradient(180deg,var(--chat-bg),#07101a)}
+  .msg{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start;position:relative}
+  .msg .bubble{background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:12px;max-width:70%;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;position:relative}
+  .msg .meta{font-size:13px;color:var(--muted);margin-bottom:6px}
+  .msg-controls{display:none;gap:6px;margin-top:6px}
+  .msg:hover .msg-controls{display:flex}
+  .composer{padding:12px;border-top:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px;align-items:stretch;position:relative;}
+  .composer-main{display:flex;gap:12px;align-items:flex-end;}
+  .input{flex:1;background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;color:inherit;border:1px solid rgba(255,255,255,0.02);min-height:48px;max-height:150px;overflow:auto;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;}
+  .send{padding:10px 14px;border-radius:10px;background:var(--accent);border:none;color:white;font-weight:700;cursor:pointer}
+  .emoji-btn{background:transparent;border:none;cursor:pointer;font-size:20px;color:var(--muted);}
+  .emoji-picker-container{position:absolute;bottom:120px;right:60px;z-index:100;display:none;}
+  .preview{position:absolute;bottom:120px;left:70px;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.4);padding:6px 10px;border-radius:8px}
+  .preview img{max-height:50px;border-radius:6px}
+  .preview button{background:transparent;border:none;color:white;cursor:pointer;font-size:14px}
+  .char-count{font-size:12px;color:var(--muted);text-align:right;display:none;}
+  .modal-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:300}
+  .modal{width:420px;background:linear-gradient(180deg,#06111a,#071623);padding:20px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+  .choices{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .color-swatch{width:44px;height:44px;border-radius:8px;cursor:pointer;border:2px solid rgba(255,255,255,0.1)}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="server-title">Classroom Chat</div>
+  <div class="profile">
+    <div id="sideAvatar" class="avatar">J</div>
+    <div class="user-info">
+      <div class="username" id="sideName">Guest</div>
+      <div class="small">tap Profile to edit</div>
+    </div>
+    <button id="openSettings" class="btn">Profile</button>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="chat-header">
+    <div style="font-weight:800"># general</div>
+    <div id="typingIndicator" class="typing-indicator"></div>
+  </div>
+
+  <div id="chatArea" class="chat-area"></div>
+
+  <div class="composer">
+    <div class="composer-main">
+      <div id="composerAvatar" class="avatar" style="width:42px;height:42px;border-radius:8px">J</div>
+      <div id="textInput" class="input" contenteditable="true"></div>
+      <input type="file" id="imageInput" accept="image/*" style="display:none" />
+      <button id="attachBtn" class="btn" title="Attach image">📎</button>
+      <button id="emojiBtn" class="emoji-btn" title="Emoji picker">🙂</button>
+      <button id="sendBtn" class="send">Send</button>
+      <div id="emojiPicker" class="emoji-picker-container"></div>
+      <div id="preview" class="preview" style="display:none"></div>
+    </div>
+    <div id="charCount" class="char-count">0 / 1000</div>
+  </div>
+</main>
+
+<!-- Profile modal -->
+<div id="modal" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <h2>Pick a username & avatar</h2>
+    <label>Username</label>
+    <input id="usernameInput" type="text" maxlength="20" style="width:100%;padding:8px;border-radius:6px" />
+    <label>Upload profile image</label>
+    <input id="fileInput" type="file" accept="image/*" style="width:100%" />
+    <div style="margin-top:10px;color:var(--muted);font-size:13px">Or pick a solid color:</div>
+    <div class="choices" id="colorChoices"></div>
+    <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:8px">
+      <button id="skipBtn" class="btn">Skip</button>
+      <button id="saveProfile" class="btn accent">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/emoji-mart@5.6.0/dist/browser.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', ()=>{
+  const SOCKET_URL="https://serverhosting-4sfq.onrender.com";
+  const { Picker }=window.EmojiMart;
+  const COLORS=['#6EE7B7','#86EFAC','#FDE68A','#FDBA74','#FCA5A5','#A78BFA','#60A5FA','#34D399','#F472B6','#F59E0B'];
+
+  const sideAvatar=document.getElementById('sideAvatar');
+  const sideName=document.getElementById('sideName');
+  const composerAvatar=document.getElementById('composerAvatar');
+  const openSettings=document.getElementById('openSettings');
+  const modal=document.getElementById('modal');
+  const usernameInput=document.getElementById('usernameInput');
+  const fileInput=document.getElementById('fileInput');
+  const colorChoices=document.getElementById('colorChoices');
+  const saveProfileBtn=document.getElementById('saveProfile');
+  const skipBtn=document.getElementById('skipBtn');
+
+  const chatArea=document.getElementById('chatArea');
+  const textInput=document.getElementById('textInput');
+  const sendBtn=document.getElementById('sendBtn');
+  const emojiBtn=document.getElementById('emojiBtn');
+  const emojiPicker=document.getElementById('emojiPicker');
+  const attachBtn=document.getElementById('attachBtn');
+  const imageInput=document.getElementById('imageInput');
+  const preview=document.getElementById('preview');
+  const charCount=document.getElementById('charCount');
+  const typingIndicator=document.getElementById('typingIndicator');
+
+  let socket=null, mySocketId=null, profile=null, pendingImage=null;
+  let typing=false, typingTimeout=null;
+  const currentlyTyping={};
+
+  function makeId(){return'm_'+Math.random().toString(36).slice(2,9);}
+  function readFileAsDataURL(f){return new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(f);});}
+
+  function renderAvatar(el,p){
+    el.innerHTML='';
+    if(p.type==='image'&&p.data){
+      const img=document.createElement('img');
+      img.src=p.data;img.style.width='100%';img.style.height='100%';img.style.objectFit='cover';
+      el.appendChild(img);
+    }else{
+      el.style.background=p.color||'#5865f2';
+      el.textContent=(p.name||'G')[0].toUpperCase();
+    }
+  }
+
+  function renderProfileUI(){
+    sideName.textContent=profile.name||'Guest';
+    renderAvatar(sideAvatar,profile);
+    renderAvatar(composerAvatar,profile);
+    localStorage.setItem('chat_profile',JSON.stringify(profile));
+  }
+
+  function loadProfile(){
+    const raw=localStorage.getItem('chat_profile');
+    if(raw){profile=JSON.parse(raw);renderProfileUI();}
+    else{profile={name:"Guest",type:"color",color:"#5865f2"};modal.style.display='flex';}
+  }
+
+  function updateCharCount(){
+    let length=textInput.innerText.length;
+    if(length>100){charCount.style.display="block";charCount.textContent=length+" / 1000";}
+    else charCount.style.display="none";
+  }
+
+  function updateTypingIndicator(){
+    const users=Object.values(currentlyTyping).map(p=>p.name);
+    if(users.length===0){typingIndicator.textContent="";}
+    else if(users.length===1){typingIndicator.textContent=`${users[0]} is typing…`;}
+    else if(users.length===2){typingIndicator.textContent=`${users[0]} and ${users[1]} are typing…`;}
+    else{typingIndicator.textContent=`Several people are typing…`;}
+  }
+
+  function startTyping(){
+    if(!typing){
+      typing=true;
+      socket.emit("typing", profile);
+    }
+    clearTimeout(typingTimeout);
+    typingTimeout=setTimeout(stopTyping,2000);
+  }
+
+  function stopTyping(){
+    if(typing){
+      typing=false;
+      socket.emit("stop typing");
+    }
+  }
+
+  function addMessageUI(m){
+    const row=document.createElement('div');row.className='msg';row.dataset.id=m.id;
+    const av=document.createElement('div');av.className='avatar';av.style.width='44px';av.style.height='44px';av.style.borderRadius='8px';
+    renderAvatar(av,m.profile||{name:'Guest',type:'color',color:'#5865f2'});
+    const bubble=document.createElement('div');bubble.className='bubble';
+    const meta=document.createElement('div');meta.className='meta';meta.textContent=`${m.profile?.name||'Guest'} • ${new Date(m.t).toLocaleTimeString()}${m.edited?' • (edited)':''}`;bubble.appendChild(meta);
+    if(m.text){const txt=document.createElement('div');txt.textContent=m.text;bubble.appendChild(txt);}
+    if(m.image){const img=document.createElement('img');img.src=m.image;img.style.maxWidth='200px';bubble.appendChild(img);}
+    row.appendChild(av);row.appendChild(bubble);chatArea.appendChild(row);chatArea.scrollTop=chatArea.scrollHeight;
+  }
+
+  function sendMessage(){
+    let raw=textInput.innerText.trim();
+    if(raw.length>1000){alert("Message limit is 1000 characters.");return;}
+    if(!raw&&!pendingImage)return;
+    const msg={id:makeId(),profile,text:raw,image:pendingImage||null,t:Date.now(),senderId:mySocketId};
+    addMessageUI(msg);socket.emit('chat message',msg);
+    textInput.innerHTML='';pendingImage=null;preview.style.display="none";preview.innerHTML="";updateCharCount();
+    stopTyping();
+  }
+
+  function connectSocket(){
+    socket=io(SOCKET_URL);
+    socket.on('connect',()=>mySocketId=socket.id);
+
+    socket.on('previous messages',msgs=>{chatArea.innerHTML='';msgs.forEach(addMessageUI);});
+    socket.on('chat message',m=>{if(!chatArea.querySelector(`[data-id="${m.id}"]`))addMessageUI(m);});
+    socket.on('edit message',d=>{const node=chatArea.querySelector(`[data-id="${d.id}"]`);if(node){const txt=node.querySelector('.bubble div:nth-child(2)');const meta=node.querySelector('.meta');if(txt)txt.textContent=d.text;if(meta&&!meta.textContent.includes('(edited)'))meta.textContent+=' • (edited)';}});
+    socket.on('delete message',d=>{const node=chatArea.querySelector(`[data-id="${d.id}"]`);if(node)node.remove();});
+
+    // typing events
+    socket.on("typing",(data)=>{currentlyTyping[data.id]=data.profile;updateTypingIndicator();});
+    socket.on("stop typing",(data)=>{delete currentlyTyping[data.id];updateTypingIndicator();});
+  }
+
+  sendBtn.onclick=sendMessage;
+  textInput.oninput=()=>{
+    updateCharCount();
+    if(textInput.innerText.trim().length>0) startTyping();
+    else stopTyping();
+  };
+  textInput.onkeydown=e=>{
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+    else if(textInput.innerText.length>=1000 && e.key!=='Backspace'){e.preventDefault();}
+  };
+
+  // emoji picker
+  const picker=new Picker({set:"apple",theme:"dark",onEmojiSelect:e=>{
+    if(textInput.innerText.length>=1000)return;
+    const sel=window.getSelection();if(!sel.rangeCount)return;
+    const range=sel.getRangeAt(0);range.deleteContents();range.insertNode(document.createTextNode(e.native));
+    textInput.focus();sel.collapseToEnd();updateCharCount();startTyping();
+  }});
+  emojiPicker.appendChild(picker);
+  emojiBtn.onclick=()=>{emojiPicker.style.display=emojiPicker.style.display==='none'?'block':'none';};
+
+  // image upload (one at a time)
+  attachBtn.onclick=()=>imageInput.click();
+  imageInput.onchange=async()=>{
+    if(imageInput.files.length){
+      pendingImage=await readFileAsDataURL(imageInput.files[0]);
+      preview.innerHTML=`<img src="${pendingImage}"><button id="removeImg">✖</button>`;
+      preview.style.display="flex";
+      document.getElementById("removeImg").onclick=()=>{pendingImage=null;preview.style.display="none";preview.innerHTML="";};
+      imageInput.value="";
+    }
+  };
+
+  // profile modal
+  openSettings.onclick=()=>{usernameInput.value=profile?.name||'';modal.style.display='flex';};
+  saveProfileBtn.onclick=async()=>{
+    profile={name:usernameInput.value||'Guest'};
+    if(fileInput.files.length){profile.type='image';profile.data=await readFileAsDataURL(fileInput.files[0]);}
+    else if(profile.type!=='color'){profile.type='color';profile.color='#5865f2';}
+    renderProfileUI();modal.style.display='none';if(!socket)connectSocket();
+  };
+  skipBtn.onclick=()=>{if(!profile)profile={name:'Guest',type:'color',color:'#5865f2'};renderProfileUI();modal.style.display='none';if(!socket)connectSocket();};
+
+  // color choices
+  COLORS.forEach(c=>{const sw=document.createElement('div');sw.className='color-swatch';sw.style.background=c;sw.onclick=()=>{profile={name:usernameInput.value||'Guest',type:'color',color:c};renderProfileUI();};colorChoices.appendChild(sw);});
+
+  loadProfile();if(profile)connectSocket();
+});
+</script>
+</body>
+</html>

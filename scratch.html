@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scratch JS Runner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #111;
+      color: #fff;
+    }
+    input {
+      width: 60%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      margin: 10px 0;
+    }
+    button {
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #4CAF50;
+      color: #fff;
+      font-size: 16px;
+    }
+    iframe {
+      margin-top: 20px;
+      border: none;
+      width: 800px;
+      height: 600px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+  <h1>⚡ Run Scratch Projects Faster</h1>
+  <p>Paste a Scratch project link below:</p>
+  <input id="scratchLink" type="text" placeholder="https://scratch.mit.edu/projects/123456789/">
+  <br>
+  <button onclick="loadProject()">Run Project</button>
+  
+  <div id="player"></div>
+  
+  <script>
+    function loadProject() {
+      const link = document.getElementById("scratchLink").value.trim();
+      const match = link.match(/projects\/(\d+)/);
+      if (!match) {
+        alert("Invalid Scratch project link!");
+        return;
+      }
+      const projectId = match[1];
+      const embedUrl = `https://turbowarp.org/${projectId}/embed?autoplay&fps=60&turbo`;
+      
+      document.getElementById("player").innerHTML = `
+        <iframe src="${embedUrl}" allowtransparency="true" allowfullscreen></iframe>
+      `;
+    }
+  </script>
+</body>
+</html>
